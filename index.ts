@@ -2,9 +2,9 @@ import * as path from "path";
 import * as xlsx from "xlsx";
 import * as fs from "fs";
 const json2xls = require("json2xls");
-
+const files = process.argv.slice(2);
 try {
-  readFileAndParseClean("OutOfServiceAtms.xlsx").then((json) => {
+  readFileAndParseClean<OutOfServiceATM>(files[0]).then((json) => {
     const sortedAtms = attachAtmIdAndSortByAge(json);
 
     setSeverityStatus(sortedAtms);
@@ -68,7 +68,7 @@ function attachAtmIdAndSortByAge(json: OutOfServiceATM[]) {
 }
 
 function compareCurrentAtmStatusAndAttachTicket(sortedAtms: OutOfServiceATM[]) {
-  readFileAndParseClean("Current_status_file.xlsx").then((json) => {
+  readFileAndParseClean<CurrentStatusATM>(files[1]).then((json) => {
     //step 1
     [27, 18, 6, 4].forEach((actionCode) => {
       const fileteredlist = filterByActionCode(json, actionCode);
@@ -80,6 +80,7 @@ function compareCurrentAtmStatusAndAttachTicket(sortedAtms: OutOfServiceATM[]) {
     });
     const xls = json2xls(sortedAtms);
     fs.writeFileSync("./dashboard.xlsx", xls, "binary");
+    console.log(`check dashboard.xlsx`);
   });
 }
 
@@ -103,9 +104,9 @@ function setSeverityStatus(sortedAtms: OutOfServiceATM[]) {
   });
 }
 
-async function readFileAndParseClean(name: string) {
+async function readFileAndParseClean<T>(name: string): Promise<T[]> {
   console.log(`reading ${name} file...`);
-  const workbook = xlsx.readFile(path.resolve(__dirname, "inputFiles", name));
+  const workbook = xlsx.readFile(path.resolve(name));
   console.log(`reading done!`);
 
   const sheetName = workbook.SheetNames[0];

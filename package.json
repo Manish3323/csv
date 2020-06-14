@@ -21,7 +21,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsc",
+    "start": "ts-node index.ts",
     "build": "babel . --out-dir lib --extensions '.ts,.tsx'"
   },
   "author": "",

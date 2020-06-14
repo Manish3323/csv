@@ -4,7 +4,7 @@
 
    > \$> npm install
 
-   > \$> npm start
+   > \$> npm start pathToOutOfServicefile1.xlsx pathToCurrentStatus.xlsx
 
 /\*\*
 

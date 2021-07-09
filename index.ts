@@ -3,17 +3,17 @@ import * as xlsx from "xlsx";
 import * as fs from "fs";
 const json2xls = require("json2xls");
 const files = process.argv.slice(2);
-try {
-  readFileAndParseClean<OutOfServiceATM>(files[0]).then((json) => {
-    const sortedAtms = attachAtmIdAndSortByAge(json);
+// try {
+//   readFileAndParseClean<OutOfServiceATM>(files[0]).then((json) => {
+//     const sortedAtms = attachAtmIdAndSortByAge(json);
 
-    setSeverityStatus(sortedAtms);
+//     setSeverityStatus(sortedAtms);
 
-    compareCurrentAtmStatusAndAttachTicket(sortedAtms);
-  });
-} catch {
-  console.error("[ERROR] : file not found");
-}
+//     compareCurrentAtmStatusAndAttachTicket(sortedAtms);
+//   });
+// } catch {
+//   console.error("[ERROR] : file not found");
+// }
 
 const setTicketId = (
   currentAtms: CurrentStatusATM[],
@@ -68,20 +68,20 @@ function attachAtmIdAndSortByAge(json: OutOfServiceATM[]) {
 }
 
 function compareCurrentAtmStatusAndAttachTicket(sortedAtms: OutOfServiceATM[]) {
-  readFileAndParseClean<CurrentStatusATM>(files[1]).then((json) => {
-    //step 1
-    [27, 18, 6, 4].forEach((actionCode) => {
-      const fileteredlist = filterByActionCode(json, actionCode);
-      setTicketId(fileteredlist, sortedAtms);
-    });
-    [47, 26, 8, 34, 7].forEach((actionCode) => {
-      const fileteredlist = filterByActionCode(json, actionCode);
-      setTicketId(fileteredlist, sortedAtms);
-    });
-    const xls = json2xls(sortedAtms);
-    fs.writeFileSync("./dashboard.xlsx", xls, "binary");
-    console.log(`check dashboard.xlsx`);
-  });
+  // readFileAndParseClean<CurrentStatusATM>(files[1], 0).then((json) => {
+  //   //step 1
+  //   [27, 18, 6, 4].forEach((actionCode) => {
+  //     const fileteredlist = filterByActionCode(json, actionCode);
+  //     setTicketId(fileteredlist, sortedAtms);
+  //   });
+  //   [47, 26, 8, 34, 7].forEach((actionCode) => {
+  //     const fileteredlist = filterByActionCode(json, actionCode);
+  //     setTicketId(fileteredlist, sortedAtms);
+  //   });
+  //   const xls = json2xls(sortedAtms);
+  //   fs.writeFileSync("./dashboard.xlsx", xls, "binary");
+  //   console.log(`check dashboard.xlsx`);
+  // });
 }
 
 function setSeverityStatus(sortedAtms: OutOfServiceATM[]) {
@@ -104,15 +104,19 @@ function setSeverityStatus(sortedAtms: OutOfServiceATM[]) {
   });
 }
 
-async function readFileAndParseClean<T>(name: string): Promise<T[]> {
+export function readFile(name: string): Promise<xlsx.WorkBook> {
   console.log(`reading ${name} file...`);
   const workbook = xlsx.readFile(path.resolve(name));
   console.log(`reading done!`);
-
-  const sheetName = workbook.SheetNames[0];
+  return Promise.resolve(workbook);
+}
+export async function readSheetAndParseClean<T>(
+  workbook: xlsx.WorkBook,
+  sheetNumber: number
+): Promise<T[]> {
+  const sheetName = workbook.SheetNames[sheetNumber];
   const sheet = workbook.Sheets[sheetName];
-  console.log(`\n processing ${name} file...`);
-
+  console.log(`\n processing sheet...`);
   return JSON.parse(
     JSON.stringify(xlsx.utils.sheet_to_json(sheet)).replace(/"\s+|\s+"/g, '"')
   );

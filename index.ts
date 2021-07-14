@@ -106,6 +106,9 @@ function setSeverityStatus(sortedAtms: OutOfServiceATM[]) {
 
 export function readFile(name: string): Promise<xlsx.WorkBook> {
   console.log(`reading ${name} file...`);
+  xlsx.utils.json_to_sheet([], {
+    
+  })
   const workbook = xlsx.readFile(path.resolve(name));
   console.log(`reading done!`);
   return Promise.resolve(workbook);

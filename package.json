@@ -8,6 +8,7 @@
     "@types/node": "^14.0.13",
     "@types/xlsx": "0.0.36",
     "chalk": "^4.1.0",
+    "event-stream": "^4.0.1",
     "json2xls": "^0.1.2",
     "xlsx": "^0.16.2"
   },
@@ -16,12 +17,14 @@
     "@babel/core": "^7.10.2",
     "@babel/preset-env": "^7.10.2",
     "@babel/preset-typescript": "^7.10.1",
+    "@types/event-stream": "^3.3.34",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.5"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "ts-node duration.ts",
+    "processLog": "ts-node logs.ts",
     "build": "babel . --out-dir lib --extensions '.ts,.tsx'"
   },
   "author": "",

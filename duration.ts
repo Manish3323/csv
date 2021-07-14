@@ -17,14 +17,15 @@ const job = async () => {
   writetoxls(sheet1, "CommentUpdated");
 };
 
-try {
-  job();
-} catch {
-  console.error("[ERROR] : file not found");
-}
+// try {
+//   job();
+// } catch {
+//   console.error("[ERROR] : file not found");
+// }
 
-const writetoxls = (json: sheet[], name: string) => {
+export const writetoxls = (json: any[], name: string) => {
   const xls = json2xls(json);
+  
   fs.writeFileSync(`./${name}.xlsx`, xls, "binary");
   console.log(`check ${name}.xlsx`);
 };

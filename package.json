@@ -10,7 +10,7 @@
     "chalk": "^4.1.0",
     "event-stream": "^4.0.1",
     "json2xls": "^0.1.2",
-    "xlsx": "^0.16.2"
+    "xlsx": "^0.17.0"
   },
   "devDependencies": {
     "@babel/cli": "^7.10.1",

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css">
+    <script defer="" src="https://pyscript.net/latest/pyscript.js"></script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.21.3/full/pyodide.js"></script>
+    <script
+      src="https://unpkg.com/react@17/umd/react.production.min.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/@material-ui/core@v4.12.3/umd/material-ui.production.min.js"
+      crossorigin
+    ></script>
+    <!-- Fonts to support Material Design -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
+    />
+    <!-- Icons to support Material Design -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@5"></script> -->
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script> -->
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script> -->
+    <script type="text/javascript" src="https://unpkg.com/tabulator-tables@4.9.3/dist/js/tabulator.js"></script>
+    <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-2.4.2.js"></script>
+    <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-2.4.2.min.js"></script>
+    <script type="text/javascript" src="https://cdn.bokeh.org/bokeh/release/bokeh-tables-2.4.2.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/@holoviz/panel@0.13.0/dist/panel.min.js"></script>
+  </head>
+
+  <body>
+    <py-env>
+      - numpy
+      - pandas
+      - panel==0.13.1
+      - openpyxl
+      - xlsxwriter
+    </py-env>
+    <py-script>
+import asyncio
+import panel as pn
+import pandas as pd
+from datetime import datetime
+from panel.io.pyodide import show
+from io import StringIO
+
+pd.options.mode.chained_assignment = None
+
+
+Descriptions = ["SLM Calls to be skipped", "Bank Depd. Calls to be skipped", "CASHOUTERROR", "AB FULL/REJECT BIN OVERFILL", "ALL CASSETTES DOWN/FATAL", "CASHACCEPTORFAULTS", "JPERROR", "ENCRYPTORERROR", "CARDREADERERROR", "CLOSED", "INSUPERVISORY", "LOCAL/COMMUNICATIONERROR ", "EXCLUSIVELOCALERROR "]
+actionCodes = [27, 4, 15, 47, 26, 26, 46, 8, 8, 34, 7, 34,34]
+statusCodes =["SLM", "Bank Depd.", "COB", "01570","00298", "01188", "01806", "02200", "00479", "00460", "02603", "00459", "00459"]
+GasperStatusDescription = ["SLM", "Bank Dependency", "Cash Out - Bank reason", "Reject Bin Overfill", "ALL Cassettes are Faulted", "Cash Acceptor Faulted Fatal Error", "JP : Not configured", "Encryptor: Error", "ATM Shutdown -Card reader faults", "ATM has been marked Down", "Mode switch moved to Supervisor", "ATM has been DISCONNECTED", "ATM has been DISCONNECTED"]
+data = {'ESQ/Inactive Problem Description': Descriptions, 'Action Code': actionCodes, 'Status Code': statusCodes, 'Gasper Status Description': GasperStatusDescription}
+faultDist = pd.DataFrame(data)
+
+fileInput1 = pn.widgets.FileInput(accept='.xlsx')
+fileInput2 = pn.widgets.FileInput(accept='.xlsx')
+fileInput3 = pn.widgets.FileInput(accept='.xlsx')
+uploadButton = pn.widgets.Button(name='Process Files', button_type = 'primary')
+
+creationTable = pn.widgets.Tabulator(pagination='remote', page_size=5)
+closure27Table = pn.widgets.Tabulator(pagination='remote', page_size=5)
+closure4Table = pn.widgets.Tabulator(pagination='remote', page_size=5)
+flmClosureTable = pn.widgets.Tabulator(pagination='remote', page_size=5)
+
+datenow = datetime.now().strftime('%d/%m/%Y %H:%M')
+
+creationFileName = f"creation-{datenow}.csv"
+closure27FileName = f"AC-27-{datenow}.csv"
+closure4FileName = f"AC-4-{datenow}.csv"
+flmClosureFileName = f"FLM-{datenow}.csv"
+def get_csv(table):
+    sio = StringIO()
+    table.value.to_csv(sio)
+    sio.seek(0)  # reset pointer
+    return sio
+
+creationFileDownload = pn.widgets.FileDownload(filename=creationFileName, callback=lambda d: get_csv(creationTable), button_type="success")
+closure27fileDownload = pn.widgets.FileDownload(filename=closure27FileName, callback=lambda d: get_csv(closure27Table), button_type="success")
+closure4fileDownload = pn.widgets.FileDownload(filename=closure4FileName, callback=lambda d: get_csv(closure4Table), button_type="success")
+flmClosureFileDownload = pn.widgets.FileDownload(filename=flmClosureFileName, callback=lambda d: get_csv(flmClosureTable), button_type="success")
+
+dataTables = ['closure27Table','closure4Table','flmClosureTable', 'creationTable']
+downloadButtons = ['closure27fileDownload', 'closure4fileDownload','flmClosureFileDownload', 'creationFileDownload']
+
+def changeVisibility(to):
+  for each in dataTables:
+    document.getElementById(each).style.display = to
+  for each in downloadButtons:
+    document.getElementById(each).style.display = to
+
+
+def assignAtmId(df):
+  return df['TERMINAL ID'][3:]
+
+
+def assignStatusCode(row):
+  faults = faultDist.index[faultDist['Action Code'] == row['Action Code Updated']]
+  for each in faults:
+    if(len(row[faultDist['ESQ/Inactive Problem Description'][each]].strip()) > 0):
+      return faultDist['Status Code'][each]
+  return -999
+
+def assignActionCode(row):
+  faultsDesc = faultDist['ESQ/Inactive Problem Description'].values
+  codes = []
+  for i in range(len(faultsDesc)):
+    if(faultsDesc[i] in row.index.values and len(row[faultsDesc[i]].strip()) > 0):
+      codes.append(faultDist['Action Code'][i])
+  return codes
+
+
+def process_file(event):
+    if fileInput1.value is None:
+      window.alert("Out of service file missing.")
+    if fileInput2.value is None:
+      window.alert("CSR file missing.")
+    if fileInput3.value is None:
+      window.alert("Inactive file missing.")
+    outOfService = pd.read_excel(io.BytesIO(fileInput1.value), usecols="A,H:W,AL")
+    current = pd.read_excel(io.BytesIO(fileInput2.value), usecols="B,G,H,I,L")
+    inactive = pd.read_excel(io.BytesIO(fileInput3.value))
+
+    outOfService = outOfService.sort_values(by='AGE', ascending=False)
+
+    outOfService['ATM ID'] = outOfService.apply(assignAtmId, axis=1)
+    inactive['ATM ID'] = inactive.apply(assignAtmId, axis=1)
+
+
+    csrOnly27And4 = current[(current['Action Code'] == 27) | (current['Action Code'] == 4)]
+    csrWithout27And4 = current[(current['Action Code'] != 27) & (current['Action Code'] != 4)]
+
+
+    outOfServiceOnly27and4 = outOfService.join(csrOnly27And4.set_index('ATM ID'), on='ATM ID', how="inner")
+    outOfServiceWithout27and4 = outOfService[~outOfService['ATM ID'].isin(outOfServiceOnly27and4['ATM ID'])]
+    outOfServiceWithout27and4['Action Code Updated'] = outOfServiceWithout27and4.apply(assignActionCode, axis=1)
+
+    exploded = outOfServiceWithout27and4.explode('Action Code Updated')
+
+    mrged = pd.merge(exploded, csrWithout27And4, how='left', left_on=['ATM ID', 'Action Code Updated'], right_on=['ATM ID', 'Action Code'],  indicator='Exist')
+    mrgedInactive = pd.merge(inactive, csrOnly27And4, how='left', on=['ATM ID'],  indicator='Exist')
+    mrgedInactive.rename(columns = {'Action Code':'Action Code Updated'}, inplace = True)
+    mrgedOutOfService = mrged[mrged['Exist']=='left_only']
+    mrgedInactive = mrgedInactive[mrgedInactive['Exist']=='left_only']
+    if(len(mrgedInactive) > 0):
+      creationList = pd.concat([mrgedOutOfService,mrgedInactive])
+    else:
+      creationList = mrgedOutOfService
+
+    creationList['Created At'] = datenow
+    creationList['Status Code'] = creationList.apply(assignStatusCode, axis=1)
+    creationList = creationList[['ATM ID', 'Action Code Updated', 'Status Code', 'Created At', 'AGE']]
+    creationList.set_index('ATM ID', inplace=True)
+    creationTable.value = creationList
+    document.getElementById('creationTable').style.display = 'flex'
+    document.getElementById('creationFileDownload').style.display = 'flex'
+
+    ## closure part
+
+    outOfService['Action Code Updated For Closure'] = outOfService.apply(assignActionCode, axis=1)
+    explodedOutOfService = outOfService.explode('Action Code Updated For Closure')
+    closureListMergeOutOfService = pd.merge(current, explodedOutOfService, on=['ATM ID'], how="left", indicator='ExistIn')
+    closureListOutOfService = closureListMergeOutOfService[closureListMergeOutOfService['ExistIn'] == 'left_only']
+
+    closureListMergeInactive = pd.merge(closureListOutOfService, inactive, on=['ATM ID'], how="left", indicator='ExistForInactive')
+    closureListInactive = closureListMergeInactive[closureListMergeInactive['ExistForInactive'] == 'left_only']
+    closureList = closureListInactive
+    closureList = closureList[['ATM ID', 'Action Code', 'Status Code', 'Ticket ID']]
+    closureList.set_index('Ticket ID', inplace=True)
+    closure27 = closureList[(closureList['Action Code'] == 27)]
+    closure4 = closureList[(closureList['Action Code'] == 4)]
+    closureNot27And4 = closureList[(closureList['Action Code'] != 4) & (closureList['Action Code'] != 27)]
+    closure27Table.value = closure27
+    closure4Table.value = closure4
+    flmClosureTable.value = closureNot27And4
+
+    changeVisibility('flex')
+
+
+
+uploadButton.on_click(process_file)
+
+await show(fileInput1, 'fileinput1')
+await show(fileInput2, 'fileinput2')
+await show(fileInput3, 'fileinput3')
+await show(uploadButton, 'upload')
+
+await show(creationTable, 'creationTable')
+await show(closure27Table, 'closure27Table')
+await show(closure4Table, 'closure4Table')
+await show(flmClosureTable, 'flmClosureTable')
+await show(creationFileDownload, 'creationFileDownload')
+await show(closure27fileDownload, 'closure27fileDownload')
+await show(closure4fileDownload, 'closure4fileDownload')
+await show(flmClosureFileDownload, 'flmClosureFileDownload')
+
+changeVisibility('none')
+
+    </py-script>
+    <div class="container"> 
+      <div class="item">
+        <label for="fileinput1"> Out of service</label>
+        <div id="fileinput1"></div>
+      </div>
+      <div class="item">
+        <label for="fileinput2"> Current status report</label>
+        <div id="fileinput2"></div>
+      </div>
+      <div class="item">
+        <label for="fileinput3"> Inactive</label>
+        <div id="fileinput3"></div>
+      </div>
+      <div class="item" id="upload"></div>
+      <div class="item">
+        <div class="item" id="creationTable"></div>
+        <div class="item" id="creationFileDownload"></div>
+      </div>
+      <div class="item">
+        <div class="item" id="closure27Table"></div>
+        <div class="item" id="closure27fileDownload"></div>
+      </div>
+      <div class="item">
+        <div class="item" id="closure4Table"></div>
+        <div class="item" id="closure4fileDownload"></div>
+      </div>
+      <div class="item">
+        <div class="item" id="flmClosureTable"></div>
+        <div class="item" id="flmClosureFileDownload"></div>
+      </div>
+      
+    </div>
+  </body>
+  <style>
+    .container {
+      display: flex;
+      flex-direction: column;
+      width: 50%;
+    }
+
+    .item {
+      display: flex;
+      justify-content: right;
+    }
+  </style>
+</html>

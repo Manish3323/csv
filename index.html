@@ -74,7 +74,7 @@ closure27Table = pn.widgets.Tabulator(pagination='remote', page_size=5)
 closure4Table = pn.widgets.Tabulator(pagination='remote', page_size=5)
 flmClosureTable = pn.widgets.Tabulator(pagination='remote', page_size=5)
 
-datenow = datetime.now().strftime('%d/%m/%Y %H:%M')
+datenow = datetime.now().strftime('%m/%d/%Y %H:%M')
 
 creationFileName = f"creation-{datenow}.csv"
 closure27FileName = f"AC-27-{datenow}.csv"
@@ -86,10 +86,10 @@ def get_csv(table):
     sio.seek(0)  # reset pointer
     return sio
 
-creationFileDownload = pn.widgets.FileDownload(filename=creationFileName, callback=lambda d: get_csv(creationTable), button_type="success")
-closure27fileDownload = pn.widgets.FileDownload(filename=closure27FileName, callback=lambda d: get_csv(closure27Table), button_type="success")
-closure4fileDownload = pn.widgets.FileDownload(filename=closure4FileName, callback=lambda d: get_csv(closure4Table), button_type="success")
-flmClosureFileDownload = pn.widgets.FileDownload(filename=flmClosureFileName, callback=lambda d: get_csv(flmClosureTable), button_type="success")
+creationFileDownload = pn.widgets.FileDownload(filename=creationFileName, callback=lambda: get_csv(creationTable), button_type="success")
+closure27fileDownload = pn.widgets.FileDownload(filename=closure27FileName, callback=lambda: get_csv(closure27Table), button_type="success")
+closure4fileDownload = pn.widgets.FileDownload(filename=closure4FileName, callback=lambda: get_csv(closure4Table), button_type="success")
+flmClosureFileDownload = pn.widgets.FileDownload(filename=flmClosureFileName, callback=lambda: get_csv(flmClosureTable), button_type="success")
 
 dataTables = ['closure27Table','closure4Table','flmClosureTable', 'creationTable']
 downloadButtons = ['closure27fileDownload', 'closure4fileDownload','flmClosureFileDownload', 'creationFileDownload']
@@ -181,6 +181,10 @@ def process_file(event):
     closure27 = closureList[(closureList['Action Code'] == 27)]
     closure4 = closureList[(closureList['Action Code'] == 4)]
     closureNot27And4 = closureList[(closureList['Action Code'] != 4) & (closureList['Action Code'] != 27)]
+    closureNot27And4 = closureNot27And4[(closureNot27And4['Action Code'] != 6) & (closureNot27And4['Action Code'] != 18)]
+    closure27['Created At'] = datenow
+    closure4['Created At'] = datenow
+    closureNot27And4['Created At'] = datenow
     closure27Table.value = closure27
     closure4Table.value = closure4
     flmClosureTable.value = closureNot27And4

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>excel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.8.0/jszip.js"></script>
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script>
+      var inputFile = "";
+
+      window.onload = () => {
+        document.getElementById("input").addEventListener("change", (event) => {
+          const fileList = event.target.files;
+          console.log(fileList);
+          inputFile = fileList[0];
+        });
+      };
+      const makeButtonDisable = () => {
+        const button = document.getElementById("button");
+        button.innerHTML = "processing";
+        button.disabled = true;
+      };
+      const resetbutton = () => {
+        const button = document.getElementById("button");
+        button.innerHTML = "process";
+        button.disabled = false;
+      };
+      const execute = function () {
+        var reader = new FileReader();
+        makeButtonDisable();
+        reader.onload = function (e) {
+          var data = e.target.result;
+          var workbook = XLSX.read(data, {
+            type: "binary",
+          });
+          const sheetName =
+            document.getElementById("sheetName").innerHTML || "Sheet1";
+          var rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+          const updateRows = rows.map((element) => {
+            const comments = element["Shared Comment TH"];
+            if (!!comments) {
+              const dateTimeMatches = comments.match(
+                /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2})/g
+              );
+              const datePlusNameMatches = comments.match(
+                /(\d{2})\/(\d{2})\/(\d{4}) (\d{2}):(\d{2}) (\w{2,3})/g
+              );
+              console.log(datePlusNameMatches);
+              if (!!dateTimeMatches && dateTimeMatches.length > 0) {
+                const firstComment =
+                  dateTimeMatches[dateTimeMatches.length - 1];
+                const firstDatePlusNameMatches =
+                  datePlusNameMatches[datePlusNameMatches.length - 1];
+                element["firstCommentDateTime"] = firstComment;
+                element["person"] =
+                  firstDatePlusNameMatches.split(firstComment)[1];
+              } else {
+                element["firstCommentDateTime"] = "No date time found";
+                element["person"] = "No date time found";
+              }
+            } else {
+              element["firstCommentDateTime"] = "No comments";
+              element["person"] = "No comments";
+            }
+            return element;
+          });
+          var newWorkSheet = XLSX.utils.json_to_sheet(updateRows);
+          var wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, newWorkSheet, "Sheet1");
+          XLSX.writeFile(wb, "newSheet.xlsx");
+          resetbutton();
+        };
+
+        reader.onerror = function (ex) {
+          console.log(ex);
+        };
+        if (inputFile != "") {
+          reader.readAsBinaryString(inputFile);
+        } else {
+          alert("select xlsx file.");
+        }
+      };
+    </script>
+  </head>
+  <style>
+    #main {
+      display: flex;
+      width: 100%;
+      height: 100vh;
+      justify-content: center;
+    }
+    #frm {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      row-gap: 10px;
+      margin: auto;
+    }
+    #button {
+      margin-left: auto;
+    }
+  </style>
+  <body id="main">
+    <form id="frm">
+      <input type="file" id="input" accept=".xlsx,.xls" />
+      <div>
+        <label for="sheetName"> Sheet name</label>
+        <input type="text" defaultValue="Sheet1" id="sheetName" />
+      </div>
+      <button type="button" id="button" onclick="execute()">
+        Process file
+      </button>
+    </form>
+  </body>
+</html>
